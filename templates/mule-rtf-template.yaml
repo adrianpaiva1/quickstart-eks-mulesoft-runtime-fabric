@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   This template installs MuleSoft RTF in an Amazon EKS cluster spanning separate Availability Zones
   inside a VPC. This template creates an Amazon EC2 Linux instance to execute kubectl
-  commands, and then terminates the instance.
+  commands, and then terminates the instance. (qs-1tdgepc26)
 
 Metadata:
   cfn-lint:
