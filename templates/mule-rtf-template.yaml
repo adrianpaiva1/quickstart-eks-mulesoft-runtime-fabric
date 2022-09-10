@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
-  This template installs MuleSoft RTF in an EKS cluster spanning separate Availability Zones
-  inside a VPC.  This template creates an Amazon EC2 Linux instance to execute kubectl
-  commands, and then terminates the instalce.
+  This template installs MuleSoft RTF in an Amazon EKS cluster spanning separate Availability Zones
+  inside a VPC. This template creates an Amazon EC2 Linux instance to execute kubectl
+  commands, and then terminates the instance. (qs-1tdgepc26)
 
 Metadata:
   cfn-lint:
@@ -11,7 +11,7 @@ Metadata:
         - W9006
         - E9101
   QuickStartDocumentation:
-    EntrypointName: "Launch into an existing EKS cluster"
+    EntrypointName: "Parameters for deploying into an existing EKS cluster"
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
@@ -19,7 +19,7 @@ Metadata:
         Parameters:
           - PrivateSubnet1ID
       - Label:
-          default: EKS configuration
+          default: Amazon EKS configuration
         Parameters:
           - EKSClusterName
           - IAMRole
@@ -31,7 +31,7 @@ Metadata:
           - QSS3KeyPrefix
           - QSS3BucketRegion
       - Label:
-          default: MuleSoft RTF configuration
+          default: MuleSoft Runtime Fabric (RTF) configuration
         Parameters:
           - RTFFabricName
           - OrgID
@@ -40,7 +40,7 @@ Metadata:
           - MuleLicenseKeyinbase64
     ParameterLabels:
       PrivateSubnet1ID:
-        default: Private Subnet 1 ID
+        default: Private subnet 1 ID
       QSS3BucketName:
         default: Quick Start S3 bucket name
       QSS3BucketRegion:
@@ -54,67 +54,79 @@ Metadata:
       SecurityGroup:
         default: EC2 security group
       RTFFabricName:
-        default: Runtime Fabric Name
+        default: Runtime Fabric name
       OrgID:
-        default: Oraganization ID of your Anypoint
+        default: Organization ID of your Anypoint
       UserName:
-        default: Anypoint Platform Username
+        default: Anypoint Platform user name
       Password:
-        default: Anypoint Platform Password
+        default: Anypoint Platform password
       MuleLicenseKeyinbase64:
-        default: Mule License Key in Base 64 Format
+        default: Mule license key in base 64 format
 
 Parameters:
   PrivateSubnet1ID:
-    Description: ID of the private subnet 1 in Availability Zone 1 (e.g., subnet-a0246dcd)
+    Description: ID of the private subnet in Availability Zone 1 (e.g., subnet-a0246dcd).
     Type: AWS::EC2::Subnet::Id
   QSS3BucketName:
-    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
-    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
-      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
-      (-).
+    AllowedPattern: ^[0-9a-z]+([0-9a-z-\.]*[0-9a-z])*$
+    ConstraintDescription: >-
+      The S3 bucket name can include numbers, lowercase letters, 
+      and hyphens (-), but it cannot start or end with a hyphen.
     Default: aws-quickstart
-    Description: S3 bucket name for the Quick Start assets. Quick Start bucket name
-      can include numbers, lowercase letters, uppercase letters, and hyphens (-).
-      It cannot start or end with a hyphen (-).
+    Description: >-
+      Name of the S3 bucket for your copy of the deployment assets. Keep the default
+      name unless you are customizing the template. Changing the name updates code 
+      references to point to a new location.
+    MinLength: 3
+    MaxLength: 63 
     Type: String
   QSS3BucketRegion:
     Default: us-east-1
-    Description: The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value.
+    Description: >-
+      AWS Region where the S3 bucket (QSS3BucketName) is hosted. Keep 
+      the default Region unless you are customizing the template. Changing the Region 
+      updates code references to point to a new location. When using your own bucket, 
+      specify the Region.
     Type: String
   QSS3KeyPrefix:
-    AllowedPattern: ^[0-9a-zA-Z-/]*$
-    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
-      uppercase letters, hyphens (-), and forward slash (/).
+    AllowedPattern: ^([0-9a-zA-Z!-_\.\*'\(\)/]+/)*$
+    ConstraintDescription: >-
+      The S3 key prefix can include numbers, lowercase letters, uppercase letters, 
+      hyphens (-), underscores (_), periods (.), asterisks (*), single quotes ('),
+      open parenthesis ((), close parenthesis ()), and forward slashes (/). End the
+      prefix with a forward slash.
     Default: quickstart-eks-mulesoft-runtime-fabric/
-    Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
-      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
-      forward slash (/).
+    Description: >-
+      S3 key prefix that is used to simulate a folder for your copy of the 
+      deployment assets. Keep the default prefix unless you are customizing 
+      the template. Changing the prefix updates code references to point to 
+      a new location.
     Type: String
   EKSClusterName:
 #    AllowedPattern: ^EKS-[0-9a-zA-Z]{8}$
-    Description: EKS cluster name
+    Description: Name of the Amazon EKS cluster.
     Type: String
   IAMRole:
-    Description: IAM role for the installer to use. The role should be a member of the system:masters group in the EKS config map
+    Description: IAM role for the installer to use. The role should be a member of the system:masters group in the EKS configuration map.
     Type: String
   SecurityGroup:
-    Description: Security group for the installer to use
+    Description: Security group for the installer to use.
     Type: AWS::EC2::SecurityGroup::Id
   RTFFabricName:
-    Description: Runtime Fabric Name
+    Description: Runtime Fabric name.
     Type: String
   OrgID:
-    Description: Oraganization ID of your Anypoint
+    Description: ID of your Anypoint organization.
     Type: String
   UserName:
-    Description: Anypoint Platform Username
+    Description: Anypoint Platform user name.
     Type: String
   Password:
-    Description: Anypoint Platform Password
+    Description: Anypoint Platform password.
     Type: String
   MuleLicenseKeyinbase64:
-    Description: Mule License Key in Base 64 Format
+    Description: Mule license key in base 64 format.
     Type: String
 Conditions:
   UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
@@ -228,60 +240,68 @@ Resources:
       DocumentType: Automation
       Content:
         schemaVersion: "0.3"
-        description: Setup MuleSoft RTF installer EC2 instance then terminate it after the installation is completed
+        description: Set up MuleSoft RTF installer EC2 instance then terminate it after the installation is completed.
         assumeRole: "{{AutomationAssumeRole}}"
         parameters:
           StackName:
-            description: "Stack Name Input for cfn resource signal"
+            description: "Stack name input for CFN resource signal."
             type: "String"
           QSS3BucketName:
-            description: "S3 bucket name for the Quick Start assets. Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-)."
+            description: "Name of the S3 bucket for your copy of the deployment assets. Keep the default
+      name unless you are customizing the template. Changing the name updates code 
+      references to point to a new location."
             type: "String"
           QSS3BucketRegion:
             default: "us-east-1"
-            description: "The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value."
+            description: "AWS Region where the S3 bucket (QSS3BucketName) is hosted. Keep 
+      the default Region unless you are customizing the template. Changing the Region 
+      updates code references to point to a new location. When using your own bucket, 
+      specify the Region."
             type: "String"
           QSS3KeyPrefix:
-            description: "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/)."
+            description: "S3 key prefix that is used to simulate a folder for your copy of the 
+      deployment assets. Keep the default prefix unless you are customizing 
+      the template. Changing the prefix updates code references to point to 
+      a new location."
             type: "String"
           PrivateSubnet1ID:
-            description: "Private Subnet 1 ID"
+            description: "ID for private subnet 1."
             type: "String"
           AutomationAssumeRole:
             description: "(Optional) The ARN of the role that allows Automation to perform the actions on your behalf."
             type: "String"
           AWSRegion:
-            description: "Region"
+            description: "AWS Region to use."
             type: "String"
           EKSClusterName:
-            description: "EKS Cluster Name"
+            description: "Name of the EKS cluster."
             type: "String"
           IAMRole:
-            description: "IAM role for the installer to use"
+            description: "IAM role for the installer to use."
             type: "String"
           SecurityGroup:
-            description: "Security group for the installer to use"
+            description: "Security group for the installer to use."
             type: "String"
           RTFFabricName:
-            description: "Runtime Fabric Name"
+            description: "Runtime Fabric name."
             type: "String"
           OrgID:
-            description: "Oraganization ID of your Anypoint"
+            description: "ID of your Anypoint organization."
             type: "String"
           UserName:
-            description: "Anypoint Platform Username"
+            description: "Anypoint Platform user name."
             type: "String"
           Password:
-            description: "Anypoint Platform Password"
+            description: "Anypoint Platform password."
             type: "String"
           MuleLicenseKeyinbase64:
-            description: "Mule License Key in Base 64 Format"
+            description: "Mule license key in base 64 format."
             type: "String"
           # DomainName:
           #   description: "DNS domain name that users can use to access the Rancher console."
           #   type: "String"
           Region:
-            description: "AWS Region to use"
+            description: "AWS Region to use."
             type: "String"
             default: !Ref "AWS::Region"
         mainSteps:
@@ -292,7 +312,7 @@ Resources:
             StackName: "InstallMuleSoftRtf"
             Capabilities: [ "CAPABILITY_IAM" ]
             TemplateBody: |
-              Description: "Deploy Instance to install MuleSoft RTF"
+              Description: "Deploy instance to install MuleSoft RTF."
               Parameters:
                 LINUXBASE:
                   Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
@@ -300,49 +320,49 @@ Resources:
                 QSS3BucketName:
                   Type: "String"
                   Default: "{{QSS3BucketName}}"
-                  Description: "Name of Target S3 Bucket"
+                  Description: "Name of target S3 bucket."
                 QSS3BucketRegion:
                   Default: "us-east-2"
-                  Description: "The AWS Region where the Quick Start S3 bucket (QSS3BucketName) is hosted. When using your own bucket, you must specify this value."
+                  Description: "AWS Region where the S3 bucket (QSS3BucketName) is hosted. Keep the default Region unless you are customizing the template. Changing the Region updates code references to point to a new location. When using your own bucket, specify the Region."
                   Type: "String"
                 QSS3KeyPrefix:
                   Type: "String"
                   Default: "{{QSS3KeyPrefix}}"
-                  Description: "Name of Target S3 Prefix"
+                  Description: "Name of target S3 prefix."
                 Subnet:
-                  Description: "Subnet to deploy the EC2 instnace"
+                  Description: "Subnet to deploy the EC2 instance."
                   Default: "{{PrivateSubnet1ID}}"
                   Type: "String"
                 EKSClusterName:
-                  Description: EKS Cluster Name
+                  Description: Name of the EKS cluster.
                   Type: "String"
                   Default: "{{EKSClusterName}}"
                 IAMRole:
-                  Description: IAM role for the installer to use
+                  Description: IAM role for the installer to use.
                   Type: "String"
                   Default: "{{IAMRole}}"
                 SecurityGroup:
-                  Description: Security group for the installer to use
+                  Description: Security group for the installer to use.
                   Type: "AWS::EC2::SecurityGroup::Id"
                   Default: "{{SecurityGroup}}"
                 RTFFabricName:
-                  Description: Runtime Fabric Name
+                  Description: Runtime Fabric name.
                   Type: "String"
                   Default: "{{RTFFabricName}}"
                 OrgID:
-                  Description: Oraganization ID of your Anypoint
+                  Description: ID of your Anypoint organization.
                   Type: "String"
                   Default: "{{OrgID}}"
                 UserName:
-                  Description: Anypoint Platform Username
+                  Description: Anypoint Platform user name.
                   Type: "String"
                   Default: "{{UserName}}"
                 Password:
-                  Description: Anypoint Platform Password
+                  Description: Anypoint Platform password.
                   Type: "String"
                   Default: "{{Password}}"
                 MuleLicenseKeyinbase64:
-                  Description: Mule License Key in Base 64 Format
+                  Description: Mule license key in base 64 format.
                   Type: "String"
                   Default: "{{MuleLicenseKeyinbase64}}"
               Resources:
