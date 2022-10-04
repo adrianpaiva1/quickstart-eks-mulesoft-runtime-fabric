@@ -122,16 +122,36 @@ Parameters:
   UserName:
     Description: Anypoint Platform user name.
     Type: String
+    NoEcho: "true"    
   Password:
     Description: Anypoint Platform password.
     Type: String
+    NoEcho: "true"    
   MuleLicenseKeyinbase64:
     Description: Mule license key in base 64 format.
     Type: String
+    NoEcho: "true"    
 Conditions:
   UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
+  CreateLoginCredentialsSecret: !Not [!Equals [!Ref Password, ""]]
+  CreateLicenseSecret: !Not [!Equals [!Ref MuleLicenseKeyinbase64, ""]]  
 
 Resources:
+  MuleRTFLoginSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: CreateLoginCredentialsSecret
+    Properties:
+      Name: !Sub 'MuleSoft-RTF-Login-${RTFFabricName}'
+      SecretString: !Sub '{ "Username": "${UserName}", "Password": "${Password}" }'
+  
+  MuleRTFLicenseSecret:
+    Type: AWS::SecretsManager::Secret
+    DependsOn: MuleRTFLoginSecret
+    Condition: CreateLicenseSecret
+    Properties:
+      Name: !Sub 'MuleSoft-License-${RTFFabricName}'
+      SecretString: !Sub '{ "RTF_License_Key_inbase64": "${MuleLicenseKeyinbase64}" }'
+
   SSMAutomationRole:
     Type: AWS::IAM::Role
     Metadata:
@@ -179,6 +199,14 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub 'arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret/*'
+          PolicyName: aws-quick-start-secrets-manager-policy
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
                   - iam:CreateRole
                   - iam:CreatePolicy
                   - iam:PutRolePolicy
@@ -210,6 +238,7 @@ Resources:
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMFullAccess'
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AWSCloudFormationFullAccess'
         - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonEC2FullAccess'
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/SecretsManagerReadWrite'
   LambdaSSMRole:
     Type: AWS::IAM::Role
     Properties:
@@ -297,9 +326,6 @@ Resources:
           MuleLicenseKeyinbase64:
             description: "Mule license key in base 64 format."
             type: "String"
-          # DomainName:
-          #   description: "DNS domain name that users can use to access the Rancher console."
-          #   type: "String"
           Region:
             description: "AWS Region to use."
             type: "String"
@@ -379,6 +405,19 @@ Resources:
                           Effect: Allow
                     Roles:
                     - !Ref IAMRole
+                MuleSoftRtfManagedSecretsManagerPolicy:
+                  Type: 'AWS::IAM::ManagedPolicy'
+                  Properties:
+                    PolicyDocument:
+                      Version: '2012-10-17'
+                      Statement:
+                        - Action:
+                            - secretsmanager:GetSecretValue
+                            - secretsmanager:CreateSecret
+                          Resource: '*'
+                          Effect: Allow
+                    Roles:
+                    - !Ref IAMRole             
                 MuleSoftRtfManagedEKSPolicy:
                   Type: 'AWS::IAM::ManagedPolicy'
                   Properties:
@@ -447,7 +486,7 @@ Resources:
             Parameters:
               commands:
                 - aws s3 cp --recursive s3://{{QSS3BucketName}}/{{QSS3KeyPrefix}}scripts/ /tmp/
-                - /bin/su - ec2-user -c 'cd /tmp && sh -x mulertf_install.sh {{Region}} {{QSS3BucketName}} {{QSS3KeyPrefix}} {{QSS3BucketRegion}} {{EKSClusterName}} {{RTFFabricName}} {{OrgID}} {{UserName}} {{Password}} {{MuleLicenseKeyinbase64}}'
+                - /bin/su - ec2-user -c 'cd /tmp && sh -x mulertf_install.sh {{Region}} {{QSS3BucketName}} {{QSS3KeyPrefix}} {{QSS3BucketRegion}} {{EKSClusterName}} {{RTFFabricName}} {{OrgID}}'
         - name: CFNSignalEnd
           action: aws:branch
           inputs:
