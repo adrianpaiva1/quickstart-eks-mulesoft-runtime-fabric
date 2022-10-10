@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# -lt 10 ]; then
-    echo "I need a minimum of 10 arguments to proceed. REGION, QSS3BucketName, QSS3KeyPrefix, QSS3BucketRegion, EKSCLUSTERNAME, RTFFabricName, OrgID, UserName, Password, MuleLicenseKeyinbase64" && exit 1
+if [ $# -lt 7 ]; then
+    echo "I need a minimum of 7 arguments to proceed. REGION, QSS3BucketName, QSS3KeyPrefix, QSS3BucketRegion, EKSCLUSTERNAME, RTFFabricName, OrgID" && exit 1
 fi
 
 REGION=$1
@@ -11,9 +11,7 @@ QSS3BucketRegion=$4
 EKSCLUSTERNAME=$5
 RTFFabricName=$6
 OrgID=$7
-UserName=$8
-Password=$9
-MuleLicenseKeyinbase64=$10
+
 KeyPrefix=${QSS3KeyPrefix%?}
 
 RTFCTL_PATH=./rtfctl
@@ -21,6 +19,13 @@ BASE_URL=https://anypoint.mulesoft.com
 
 #Install jq for easier JSON object parsing
 sudo yum -y install jq
+
+MuleSoftRTFLoginCredentials="MuleSoft-RTF-Login-${RTFFabricName}"
+MuleSoftRTFLicense="MuleSoft-License-${RTFFabricName}"
+
+UserName=$(aws secretsmanager get-secret-value --secret-id $MuleSoftRTFLoginCredentials --region $REGION | jq -r '(.SecretString | fromjson)' | jq -r .Username)
+Password=$(aws secretsmanager get-secret-value --secret-id $MuleSoftRTFLoginCredentials --region $REGION | jq -r '(.SecretString | fromjson)' | jq -r .Password)
+MuleLicenseKeyinbase64=$(aws secretsmanager get-secret-value --secret-id $MuleSoftRTFLicense --region $REGION | jq -r '(.SecretString | fromjson)' | jq -r .RTF_License_Key_inbase64)
 
 # Acquire bearer token:
 TOKEN=$(curl -d "username=$UserName&password=$Password" $BASE_URL/accounts/login | jq -r .access_token)
