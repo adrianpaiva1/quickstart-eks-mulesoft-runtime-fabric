@@ -25,7 +25,6 @@ MuleSoftRTFLicense="MuleSoft-License-${RTFFabricName}"
 ActivationData=$(aws secretsmanager get-secret-value --secret-id $MuleSoftRTFLoginCredentials --region $REGION | jq -r '(.SecretString | fromjson)' | jq -r .ActivationData)
 MuleLicenseKeyinbase64=$(aws secretsmanager get-secret-value --secret-id $MuleSoftRTFLicense --region $REGION | jq -r '(.SecretString | fromjson)' | jq -r .RTF_License_Key_inbase64)
 
-
 #Update kube config to point to the cluster of our choice
 aws eks update-kubeconfig --name ${EKSCLUSTERNAME} --region $REGION
 
