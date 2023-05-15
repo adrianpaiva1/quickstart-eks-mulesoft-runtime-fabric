@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ $# -lt 10 ]; then
-    echo "I need a minimum of 10 arguments to proceed. REGION, QSS3BucketName, QSS3KeyPrefix, QSS3BucketRegion, EKSCLUSTERNAME, RTFFabricName, OrgID, UserName, Password, MuleLicenseKeyinbase64" && exit 1
+if [ $# -lt 7 ]; then
+    echo "I need a minimum of 7 arguments to proceed. REGION, QSS3BucketName, QSS3KeyPrefix, QSS3BucketRegion, EKSCLUSTERNAME, RTFFabricName, OrgID" && exit 1
 fi
 
 REGION=$1
@@ -11,20 +11,20 @@ QSS3BucketRegion=$4
 EKSCLUSTERNAME=$5
 RTFFabricName=$6
 OrgID=$7
-UserName=$8
-Password=$9
-MuleLicenseKeyinbase64=$10
+
 KeyPrefix=${QSS3KeyPrefix%?}
 
 RTFCTL_PATH=./rtfctl
-BASE_URL=https://anypoint.mulesoft.com
 
 #Install jq for easier JSON object parsing
 sudo yum -y install jq
 
-# Acquire bearer token:
-TOKEN=$(curl -d "username=$UserName&password=$Password" $BASE_URL/accounts/login | jq -r .access_token)
-echo 'TOKEN' = $TOKEN
+MuleSoftRTFLoginCredentials="MuleSoft-RTF-Login-${RTFFabricName}"
+MuleSoftRTFLicense="MuleSoft-License-${RTFFabricName}"
+
+ActivationData=$(aws secretsmanager get-secret-value --secret-id $MuleSoftRTFLoginCredentials --region $REGION | jq -r '(.SecretString | fromjson)' | jq -r .ActivationData)
+MuleLicenseKeyinbase64=$(aws secretsmanager get-secret-value --secret-id $MuleSoftRTFLicense --region $REGION | jq -r '(.SecretString | fromjson)' | jq -r .RTF_License_Key_inbase64)
+
 
 #Update kube config to point to the cluster of our choice
 aws eks update-kubeconfig --name ${EKSCLUSTERNAME} --region $REGION
@@ -38,9 +38,6 @@ kubectl get svc
 
 # Create Runtime Fabric
 PAYLOAD=$(echo \{\"name\":\"$RTFFabricName\"\,\"vendor\":\"eks\"\,\"region\":\"us-east-1\"\})
-
-ActivationData=$(curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json, text/plain, */*' -H 'Accept-Encoding: gzip, deflate, br' -H 'Content-Type: application/json;charset=UTF-8' -d $PAYLOAD $BASE_URL/runtimefabric/api/organizations/$OrgID/fabrics | jq -r .activationData)
-
 
 # Install rtfctl
 curl -L https://anypoint.mulesoft.com/runtimefabric/api/download/rtfctl/latest -o rtfctl
